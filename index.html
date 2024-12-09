@@ -158,39 +158,50 @@
         }
 
         function generateCsv(data) {
-            const targetListTitle = "✨";
-            const targetList = data.items.find(item => item.title === targetListTitle);
+    const targetListTitle = "✨";
+    const targetList = data.items.find(item => item.title === targetListTitle);
 
-            if (!targetList) {
-                alert(`List with title '${targetListTitle}' not found.`);
-                return;
-            }
+    if (!targetList) {
+        alert(`List with title '${targetListTitle}' not found.`);
+        return;
+    }
 
-            const filteredItems = [];
-            let counter = 1;
+    const filteredItems = [];
+    let counter = 1;
 
-            targetList.items.forEach(item => {
-                if (item.status === "needsAction") {
-                    const createdDate = item.created
-                        ? new Date(item.created).toISOString().slice(0, 16).replace('T', ' ')
-                        : "";
+    targetList.items.forEach(item => {
+        if (item.status === "needsAction") {
+            const createdDate = item.created
+                ? new Date(item.created).toISOString().slice(0, 16).replace('T', ' ')
+                : "";
 
-                    filteredItems.push({
-                        info: 0,
-                        id: counter++,
-                        starred: item.starred ? 1 : 0,
-                        date: createdDate,
-                        title: item.title
-                    });
-                }
-            });
-
-            csvData = "info,id,starred,date,title\n";
-            csvData += `1,,,${new Date().toISOString().slice(0, 16).replace('T', ' ')},\n`;
-            filteredItems.forEach(item => {
-                csvData += `${item.info},${item.id},${item.starred},${item.date},"${item.title}"\n`;
+            filteredItems.push({
+                info: 0,
+                id: counter++,  // Alte ID, die später angepasst wird
+                starred: item.starred ? 1 : 0,
+                date: createdDate,
+                title: item.title
             });
         }
+    });
+
+    // Sortiere die gefilterten Elemente nach Datum (ältester Eintrag zuerst)
+    filteredItems.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Neu zugewiesene IDs entsprechend der sortierten Reihenfolge vergeben
+    filteredItems.forEach((item, index) => {
+        item.id = index + 1;  // IDs werden von 1 an neu vergeben
+    });
+
+    // Erstelle die CSV-Daten
+    csvData = "info,id,starred,date,title\n";
+    csvData += `1,,,${new Date().toISOString().slice(0, 16).replace('T', ' ')},\n`;
+
+    filteredItems.forEach(item => {
+        csvData += `${item.info},${item.id},${item.starred},${item.date},"${item.title}"\n`;
+    });
+}
+
     </script>
 </body>
 
