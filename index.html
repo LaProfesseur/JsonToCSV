@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <title>JSON or ZIP to CSV Converter</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+            background-color: #1f1e23;
+            color: rgb(243, 242, 238);
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+
+        input[type="file"] {
+            margin: 20px 0;
+        }
+
+        button {
+            background-color: #ccc;
+            color: #666;
+            border: none;
+            padding: 10px 20px;
+            cursor: not-allowed;
+            border-radius: 5px;
+        }
+
+        button.active {
+            background-color: rgb(146, 193, 255);
+            color: #1f1e23;
+            cursor: pointer;
+        }
+
+        button:hover.active {
+            background-color: rgb(146, 193, 255);
+        }
+
+        #downloadLink {
+            display: none;
+            margin-top: 20px;
+            color: #007bff;
+        }
+
+        #downloadLink:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>JSON to CSV</h1>
+        <p>Upload a JSON file or a ZIP archive containing tasks.json, and download the converted CSV file.</p>
+        <input type="file" id="fileInput" accept=".json, .zip">
+        <br>
+        <button id="convertDownloadButton" disabled>Convert and Download</button>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const convertDownloadButton = document.getElementById('convertDownloadButton');
+        let csvData = null;
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) {
+                convertDownloadButton.disabled = false;
+                convertDownloadButton.classList.add('active');
+            } else {
+                convertDownloadButton.disabled = true;
+                convertDownloadButton.classList.remove('active');
+            }
+        });
+
+        convertDownloadButton.addEventListener('click', async () => {
+            if (!fileInput.files.length) return;
+
+            const file = fileInput.files[0];
+            const fileName = file.name.toLowerCase();
+
+            try {
+                if (fileName.endsWith('.json')) {
+                    processJsonFile(file);
+                } else if (fileName.endsWith('.zip')) {
+                    await processZipFile(file);
+                } else {
+                    alert('Unsupported file type. Please upload a JSON or ZIP file.');
+                    return;
+                }
+
+                // Now create the downloadable CSV and initiate the download
+                const blob = new Blob([csvData], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'output.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Error processing the file.');
+                console.error(error);
+            }
+        });
+
+        function processJsonFile(file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    generateCsv(data);
+                } catch (error) {
+                    alert('Error processing the JSON file. Please check the format.');
+                    console.error(error);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function processZipFile(file) {
+            try {
+                const zip = await JSZip.loadAsync(file);
+                let tasksJsonFile = null;
+
+                zip.forEach((relativePath, file) => {
+                    if (relativePath.toLowerCase().endsWith('tasks.json')) {
+                        tasksJsonFile = file;
+                    }
+                });
+
+                if (!tasksJsonFile) {
+                    alert('tasks.json not found in the ZIP archive.');
+                    return;
+                }
+
+                const tasksJsonContent = await tasksJsonFile.async('string');
+                const data = JSON.parse(tasksJsonContent);
+
+                generateCsv(data);
+            } catch (error) {
+                alert(`Error processing the ZIP file: ${error.message}`);
+                console.error('Detailed error:', error);
+            }
+        }
+
+        function generateCsv(data) {
+            const targetListTitle = "✨";
+            const targetList = data.items.find(item => item.title === targetListTitle);
+
+            if (!targetList) {
+                alert(`List with title '${targetListTitle}' not found.`);
+                return;
+            }
+
+            const filteredItems = [];
+            let counter = 1;
+
+            targetList.items.forEach(item => {
+                if (item.status === "needsAction") {
+                    const createdDate = item.created
+                        ? new Date(item.created).toISOString().slice(0, 16).replace('T', ' ')
+                        : "";
+
+                    filteredItems.push({
+                        info: 0,
+                        id: counter++,
+                        starred: item.starred ? 1 : 0,
+                        date: createdDate,
+                        title: item.title
+                    });
+                }
+            });
+
+            csvData = "info,id,starred,date,title\n";
+            csvData += `1,,,${new Date().toISOString().slice(0, 16).replace('T', ' ')},\n`;
+            filteredItems.forEach(item => {
+                csvData += `${item.info},${item.id},${item.starred},${item.date},"${item.title}"\n`;
+            });
+        }
+    </script>
+</body>
+
+</html>
