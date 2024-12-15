@@ -171,14 +171,18 @@
 
     targetList.items.forEach(item => {
         if (item.status === "needsAction") {
-            const createdDate = item.created
-                ? new Date(item.created).toISOString().slice(0, 16).replace('T', ' ')
-                : "";
+            let createdDate = "";
+            if (item.created) {
+                const date = new Date(item.created);
+                date.setHours(date.getHours() + 1); // Eine Stunde zur UTC-Zeit hinzufügen
+                createdDate = date.toISOString().slice(0, 16).replace('T', ' ');
+            }
 
             filteredItems.push({
                 info: 0,
-                id: counter++,  // Alte ID, die später angepasst wird
+                id: counter++, // Alte ID, die später angepasst wird
                 starred: item.starred ? 1 : 0,
+                type: 0, // Neue Spalte mit festem Wert
                 date: createdDate,
                 title: item.title
             });
@@ -190,17 +194,22 @@
 
     // Neu zugewiesene IDs entsprechend der sortierten Reihenfolge vergeben
     filteredItems.forEach((item, index) => {
-        item.id = index + 1;  // IDs werden von 1 an neu vergeben
+        item.id = index + 1; // IDs werden von 1 an neu vergeben
     });
 
-    // Erstelle die CSV-Daten
-    csvData = "info,id,starred,date,title\n";
-    csvData += `1,,,${new Date().toISOString().slice(0, 16).replace('T', ' ')},\n`;
+    // Erstelle die CSV-Daten mit der neuen Spalte "type"
+    csvData = "info,id,starred,type,date,title\n";
+
+    // Aktuelles Datum mit Zeitkorrektur für die Kopfzeile
+    const now = new Date();
+    now.setHours(now.getHours() + 1); // Eine Stunde zur aktuellen Zeit hinzufügen
+    csvData += `1,,,0,${now.toISOString().slice(0, 16).replace('T', ' ')},\n`;
 
     filteredItems.forEach(item => {
-        csvData += `${item.info},${item.id},${item.starred},${item.date},"${item.title}"\n`;
+        csvData += `${item.info},${item.id},${item.starred},${item.type},${item.date},"${item.title}"\n`;
     });
 }
+
 
     </script>
 </body>
